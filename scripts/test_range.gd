@@ -440,7 +440,7 @@ func _draw_profile_editor(editor: Control) -> void:
 	var right := editor.size.x - margin
 	editor.draw_line(Vector2(left, center_y), Vector2(right, center_y), Color(0.40, 0.55, 0.58, 0.65), 1.0)
 	for fraction in [0.25, 0.5, 0.75]:
-		var y := center_y - fraction * half_height
+		var y: float = center_y - float(fraction) * half_height
 		editor.draw_line(Vector2(left, y), Vector2(right, y), Color(0.20, 0.32, 0.36, 0.65), 1.0)
 	var upper := PackedVector2Array([Vector2(left, center_y)])
 	for profile_point in profile_points:

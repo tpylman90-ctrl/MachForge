@@ -23,7 +23,7 @@ window/stretch/mode="canvas_items"
 [rendering]
 
 limits/opengl/max_lights_per_object=1
-limits/opengl/max_renderable_lights=4
+limits/opengl/max_renderable_lights=1
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
