@@ -1,5 +1,80 @@
 extends Node3D
 
+class RangeCanvas extends Control:
+	var body_length := 3.0
+	var body_radius := 0.18
+	var nose_fullness := 0.35
+	var fin_count := 4
+	var fin_span := 0.45
+	var launch_angle := 12.0
+	var finish_color := Color(0.82, 0.56, 0.23)
+	var range_m := 0.0
+	var altitude_m := 0.0
+	var has_launched := false
+
+	func _draw() -> void:
+		var viewport := size
+		if viewport.x < 100.0 or viewport.y < 100.0:
+			return
+		draw_rect(Rect2(Vector2.ZERO, viewport), Color(0.035, 0.075, 0.11))
+		var horizon := viewport.y * 0.65
+		draw_rect(Rect2(Vector2(0.0, horizon), Vector2(viewport.x, viewport.y - horizon)), Color(0.10, 0.15, 0.17))
+		draw_line(Vector2(0.0, horizon), Vector2(viewport.x, horizon), Color(0.30, 0.45, 0.48), 2.0, true)
+
+		var range_start := viewport.x * 0.285
+		var range_end := viewport.x * 0.755
+		var track_y := horizon + 34.0
+		draw_line(Vector2(range_start, track_y), Vector2(range_end, track_y), Color(0.37, 0.55, 0.57), 2.0, true)
+		for marker_index in range(17):
+			var distance := float(marker_index) * 250.0
+			var x := lerpf(range_start, range_end, distance / 4000.0)
+			var tick_height := 15.0 if marker_index % 2 == 0 else 8.0
+			draw_line(Vector2(x, track_y - tick_height), Vector2(x, track_y + tick_height), Color(0.58, 0.76, 0.75), 1.5, true)
+			if marker_index % 2 == 0:
+				draw_string(ThemeDB.fallback_font, Vector2(x + 4.0, track_y + 29.0), "%d m" % int(distance), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.72, 0.84, 0.84))
+
+		draw_rect(Rect2(Vector2(range_start - 28.0, track_y - 2.0), Vector2(92.0, 11.0)), Color(0.24, 0.33, 0.36))
+		draw_rect(Rect2(Vector2(range_start - 17.0, track_y - 24.0), Vector2(22.0, 24.0)), Color(0.30, 0.40, 0.43))
+		draw_line(Vector2(range_start - 7.0, track_y - 21.0), Vector2(range_start + 49.0, track_y - 39.0), Color(0.56, 0.66, 0.68), 12.0, true)
+		draw_line(Vector2(range_start - 7.0, track_y - 21.0), Vector2(range_start + 49.0, track_y - 39.0), Color(0.20, 0.29, 0.32), 3.0, true)
+		draw_circle(Vector2(range_start + 53.0, track_y - 40.0), 7.0, Color(0.72, 0.79, 0.78))
+
+		var fraction := clampf(range_m / 4000.0, 0.0, 1.0) if has_launched else 0.0
+		var projectile_x := lerpf(range_start + 62.0, range_end, fraction) if has_launched else range_start + 78.0
+		var projectile_y := track_y - 47.0 - clampf(altitude_m, 0.0, 180.0) * 1.4 if has_launched else track_y - 42.0
+		if has_launched:
+			draw_line(Vector2(range_start + 62.0, track_y - 42.0), Vector2(projectile_x - 8.0, projectile_y), Color(0.18, 0.86, 0.76, 0.55), 2.0, true)
+		_draw_projectile(Vector2(projectile_x, projectile_y), clampf(body_length * 12.0, 26.0, 58.0), clampf(body_radius * 23.0, 2.5, 8.0), deg_to_rad(launch_angle))
+
+	func _draw_projectile(center: Vector2, length_px: float, radius_px: float, angle: float) -> void:
+		var nose_x := length_px * 0.5
+		var shoulder_x := length_px * 0.18
+		var tail_x := -length_px * 0.5
+		var shape := PackedVector2Array([
+			_project(Vector2(nose_x, 0.0), center, angle),
+			_project(Vector2(shoulder_x, -radius_px), center, angle),
+			_project(Vector2(tail_x, -radius_px), center, angle),
+			_project(Vector2(tail_x, radius_px), center, angle),
+			_project(Vector2(shoulder_x, radius_px), center, angle)
+		])
+		draw_colored_polygon(shape, finish_color)
+		draw_polyline(PackedVector2Array([shape[0], shape[1], shape[2], shape[3], shape[4], shape[0]]), Color(0.91, 0.96, 0.98), 1.0, true)
+		if fin_count > 0:
+			for fin_index in range(mini(fin_count, 4)):
+				var fin_angle := TAU * float(fin_index) / float(fin_count)
+				var fin_points := PackedVector2Array([
+					_project(Vector2(tail_x + 2.0, 0.0), center, angle),
+					_project(Vector2(tail_x - length_px * 0.18, -radius_px * 1.9), center, angle + fin_angle),
+					_project(Vector2(tail_x + length_px * 0.08, -radius_px * 0.7), center, angle + fin_angle)
+				])
+				draw_colored_polygon(fin_points, finish_color.darkened(0.25))
+
+	func _project(point: Vector2, center: Vector2, angle: float) -> Vector2:
+		var c := cos(angle)
+		var s := sin(angle)
+		return center + Vector2(point.x * c + point.y * s, -point.x * s + point.y * c)
+
+
 const FlightSolver = preload("res://scripts/flight_solver.gd")
 const RANGE_MARKER_SPACING := 250.0
 const RANGE_MARKER_COUNT := 16
@@ -20,6 +95,7 @@ var projectile_preview: Node3D
 var flight_projectile: Node3D
 var range_camera: Camera3D
 var trajectory_instance: MeshInstance3D
+var range_visual: RangeCanvas
 var telemetry_label: Label
 var result_label: Label
 var flight_samples: Array[Dictionary] = []
@@ -51,6 +127,10 @@ func _process(delta: float) -> void:
 	range_camera.global_position = range_camera.global_position.lerp(position + camera_offset, 1.0 - exp(-delta * 3.5))
 	range_camera.look_at(camera_target, Vector3.UP)
 	var range_value := maxf(0.0, -position.z - 5.0)
+	range_visual.range_m = range_value
+	range_visual.altitude_m = float(position.y)
+	range_visual.has_launched = true
+	range_visual.queue_redraw()
 	telemetry_label.text = "FLIGHT TELEMETRY\n\nRange     %s m\nSpeed     %s m/s\nMach      %s\nAltitude  %s m\nTime      %s s" % [
 		_format_number(range_value, 0),
 		_format_number(float(sample["speed"]), 1),
@@ -66,6 +146,15 @@ func _process(delta: float) -> void:
 
 
 func _build_world() -> void:
+	var visual_layer := CanvasLayer.new()
+	visual_layer.layer = 1
+	add_child(visual_layer)
+	range_visual = RangeCanvas.new()
+	range_visual.name = "RangeFallbackView"
+	range_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	range_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_layer.add_child(range_visual)
+
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
@@ -364,6 +453,15 @@ func _rebuild_preview() -> void:
 		fin.material_override = _make_material(selected_finish.darkened(0.24), 0.38)
 		projectile_preview.add_child(fin)
 
+	range_visual.body_length = body_length
+	range_visual.body_radius = body_radius
+	range_visual.nose_fullness = nose_fullness
+	range_visual.fin_count = fin_count
+	range_visual.fin_span = fin_span
+	range_visual.launch_angle = launch_angle
+	range_visual.finish_color = selected_finish
+	range_visual.queue_redraw()
+
 
 func _build_body_mesh(length: float, radius: float, fullness: float) -> ArrayMesh:
 	var rings: Array[Vector2] = []
@@ -447,6 +545,10 @@ func _launch_test() -> void:
 	flight_projectile.global_position = flight_samples[0]["position"]
 	flight_elapsed = 0.0
 	flight_active = true
+	range_visual.has_launched = true
+	range_visual.range_m = 0.0
+	range_visual.altitude_m = 2.45
+	range_visual.queue_redraw()
 	result_label.text = "SIMULATING FLIGHT..."
 	result_label.add_theme_color_override("font_color", ACCENT)
 
