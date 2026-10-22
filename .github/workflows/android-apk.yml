@@ -73,6 +73,47 @@ jobs:
           test -n "$apksigner"
           "$apksigner" verify --verbose build/MachForge.apk
 
+      - name: Export emulator-only build for visual verification
+        run: |
+          if godot --headless --path . --export-debug "Android Emulator" build/MachForge-emulator.apk; then
+            echo "Godot emulator export command completed."
+          else
+            echo "Godot returned a shutdown error; validating the emulator APK it produced."
+          fi
+          test -s build/MachForge-emulator.apk
+          apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          "$apksigner" verify --verbose build/MachForge-emulator.apk
+
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install and capture Android build
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install build/MachForge-emulator.apk
+            adb shell monkey -p com.machforge.app 1
+            sleep 8
+            adb shell screencap -p /sdcard/machforge-screen.png
+            adb pull /sdcard/machforge-screen.png build/MachForge-emulator.png
+
+      - name: Upload emulator render capture
+        uses: actions/upload-artifact@v4
+        with:
+          name: MachForge-Android-emulator-capture
+          path: build/MachForge-emulator.png
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
