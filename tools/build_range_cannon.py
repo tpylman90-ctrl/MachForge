@@ -190,7 +190,7 @@ def build():
 
 def build_preview_studio():
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = "BLENDER_EEVEE"
     scene.render.resolution_x = 1440
     scene.render.resolution_y = 900
     scene.render.resolution_percentage = 100
@@ -251,6 +251,8 @@ def main():
     bpy.context.view_layer.objects.active = next((obj for obj in asset_objects if obj.name == "Armored firing deck"), asset_objects[0])
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_OUT))
     bpy.ops.export_scene.gltf(filepath=str(GLB_OUT), export_format="GLB", export_apply=True, use_selection=True)
+    if not BLEND_OUT.is_file() or not GLB_OUT.is_file() or not PREVIEW_OUT.is_file():
+        raise RuntimeError("Blender asset generation did not produce every expected output")
     print(f"Saved Blender source: {BLEND_OUT}")
     print(f"Exported Godot model: {GLB_OUT}")
 

@@ -37,7 +37,11 @@ jobs:
         run: blender --background --python-expr "import bpy; print('Blender', bpy.app.version_string)"
 
       - name: Build Blender range cannon asset
-        run: blender --background --python tools/build_range_cannon.py
+        run: |
+          blender --background --python tools/build_range_cannon.py
+          test -s assets/blender_source/machforge_range_cannon.blend
+          test -s assets/godot_models/machforge_range_cannon.glb
+          test -s assets/previews/machforge_range_cannon.png
 
       - name: Import Godot project
         run: godot --headless --editor --path . --quit
