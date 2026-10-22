@@ -8,7 +8,7 @@ uses low-cost geometry and materials for Godot's mobile compatibility renderer.
 from pathlib import Path
 import bpy
 import math
-from mathutils import Matrix, Vector
+from mathutils import Vector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +30,9 @@ def material(name, color, metallic=0.0, roughness=0.55):
 
 STEEL = material("Graphite ceramic steel", (0.105, 0.16, 0.19), 0.72, 0.3)
 EDGE = material("Machined titanium", (0.38, 0.48, 0.50), 0.82, 0.24)
+COBALT = material("Cobalt blue enamel", (0.025, 0.105, 0.36), 0.55, 0.25)
+COPPER = material("Annealed copper winding", (0.56, 0.19, 0.095), 0.72, 0.27)
+GLASS = material("Pressure glass", (0.035, 0.29, 0.32), 0.5, 0.18)
 ACCENT = material("Range safety teal", (0.03, 0.69, 0.63), 0.35, 0.32)
 GOLD = material("Warning amber", (0.95, 0.48, 0.07), 0.25, 0.38)
 BLACK = material("Bore and rubber", (0.018, 0.027, 0.031), 0.12, 0.8)
@@ -108,6 +111,22 @@ def cylinder_x(name, location, radius, depth, mat, vertices=32):
     return obj
 
 
+def pipe_path(name, points, radius, mat):
+    curve = bpy.data.curves.new(name, "CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 2
+    curve.bevel_depth = radius
+    curve.bevel_resolution = 3
+    spline = curve.splines.new("POLY")
+    spline.points.add(len(points) - 1)
+    for point, position in zip(spline.points, points):
+        point.co = (*position, 1.0)
+    obj = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(obj)
+    assign(obj, mat)
+    return obj
+
+
 def build():
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
@@ -126,9 +145,9 @@ def build():
     # movable pivot so the visible cannon follows the launch-angle control.
     barrel_parts = []
     barrel_parts.append(cylinder_y("Pressure tube", (0, -1.2, 3.6), 0.91, 10.4, STEEL))
-    barrel_parts.append(cylinder_y("Outer barrel jacket", (0, -1.15, 3.6), 1.04, 8.3, EDGE))
+    barrel_parts.append(cylinder_y("Outer barrel jacket", (0, -1.15, 3.6), 1.04, 8.3, COBALT))
     barrel_parts.append(cylinder_y("Recessed black bore", (0, -6.43, 3.6), 0.77, 0.025, BLACK))
-    barrel_parts.append(torus_y("Muzzle crown", (0, -6.47, 3.6), 0.91, 0.14, ACCENT))
+    barrel_parts.append(torus_y("Muzzle crown", (0, -6.47, 3.6), 0.91, 0.14, COPPER))
     barrel_parts.append(torus_y("Muzzle reinforcement", (0, -6.0, 3.6), 1.02, 0.13, EDGE))
     for y in (-4.6, -2.4, -0.2, 1.6):
         barrel_parts.append(torus_y("Barrel reinforcement band", (0, y, 3.6), 1.04, 0.105, STEEL))
@@ -139,9 +158,16 @@ def build():
     barrel_parts.append(cylinder_y("Accumulator chamber", (0, 6.3, 3.6), 1.04, 2.2, EDGE))
     barrel_parts.append(cylinder_y("Accumulator end cap", (0, 7.48, 3.6), 1.17, 0.34, STEEL))
     barrel_parts.append(torus_y("Accumulator seam", (0, 5.2, 3.6), 1.08, 0.08, ACCENT))
+    for index in range(11):
+        barrel_parts.append(torus_y("Copper pressure winding", (0, 4.35 + index * 0.17, 3.6), 1.15, 0.072, COPPER))
+    for y in (3.65, 6.45, 7.9):
+        barrel_parts.append(torus_y("Accumulator locking collar", (0, y, 3.6), 1.25, 0.10, EDGE))
     for x in (-0.57, 0.57):
         barrel_parts.append(cylinder_y("Pressure manifold", (x, 6.22, 4.4), 0.2, 2.0, STEEL, 24))
         barrel_parts.append(cylinder_y("Manifold end fitting", (x, 7.25, 4.4), 0.28, 0.18, GOLD, 24))
+    barrel_parts.append(cylinder_y("Bore throat", (0, -6.35, 3.6), 0.66, 0.22, BLACK))
+    barrel_parts.append(torus_y("Inner bore lip", (0, -6.49, 3.6), 0.68, 0.055, EDGE))
+    barrel_parts.append(torus_y("Muzzle ID ring", (0, -6.51, 3.6), 0.57, 0.026, ACCENT))
 
     barrel_pivot = bpy.data.objects.new("ElevatingTube", None)
     bpy.context.scene.collection.objects.link(barrel_pivot)
@@ -150,6 +176,56 @@ def build():
         world_matrix = part.matrix_world.copy()
         part.parent = barrel_pivot
         part.matrix_world = world_matrix
+    muzzle_marker = bpy.data.objects.new("MuzzleExit", None)
+    bpy.context.scene.collection.objects.link(muzzle_marker)
+    muzzle_marker.parent = barrel_pivot
+    muzzle_marker.location = (0.0, -6.47, 0.0)
+    breech_marker = bpy.data.objects.new("BreechReference", None)
+    bpy.context.scene.collection.objects.link(breech_marker)
+    breech_marker.parent = barrel_pivot
+    breech_marker.location = (0.0, 7.48, 0.0)
+
+    # Cobalt breech cheeks frame the exposed pressure stage and its windings.
+    for side in (-1, 1):
+        shell = box("Breech armor cheek", (side * 1.22, 5.55, 3.54), (0.54, 3.0, 2.02), COBALT, 0.18)
+        shell.rotation_euler[0] = math.radians(-8.0)
+        box("Breech cheek inset", (side * 1.50, 5.55, 3.55), (0.055, 2.25, 1.20), STEEL, 0.1)
+        for y in (4.35, 5.15, 5.95, 6.75):
+            cylinder_x("Breech armor fastener", (side * 1.56, y, 3.55), 0.075, 0.08, EDGE, 16)
+        cylinder_x("Auxiliary pressure pod", (side * 1.68, 4.9, 2.3), 0.34, 0.76, GLASS, 32)
+        pipe_path("Copper pressure feed", [
+            (side * 0.82, 6.55, 4.4), (side * 1.55, 6.55, 4.4),
+            (side * 1.9, 6.15, 4.4), (side * 1.9, 4.8, 4.4),
+            (side * 2.0, 4.35, 3.95), (side * 2.3, 4.35, 3.95),
+        ], 0.055, COPPER)
+        pipe_path("Teal braided return hose", [
+            (side * 1.65, 4.65, 2.2), (side * 2.2, 4.25, 2.2),
+            (side * 2.5, 3.8, 2.5), (side * 2.5, 2.8, 2.5),
+            (side * 1.8, 2.45, 2.5),
+        ], 0.09, ACCENT)
+        tank_location = (side * 3.25, 5.0, 2.25)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0, location=tank_location)
+        tank = bpy.context.object
+        tank.name = "Auxiliary accumulator vessel"
+        tank.scale = (0.85, 1.0, 0.85)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        assign(tank, COBALT)
+        cylinder_y("Vessel access cap", (side * 3.25, 5.0, 2.25), 0.31, 0.16, EDGE, 28)
+        torus_y("Vessel cap seal", (side * 3.25, 5.0, 2.25), 0.29, 0.045, ACCENT)
+
+    box("Lower receiver housing", (0.0, 5.45, 1.75), (4.3, 3.2, 1.05), COBALT, 0.18)
+    box("Receiver service hatch", (0.0, 5.28, 2.31), (2.1, 1.75, 0.08), EDGE, 0.08)
+    for x in (-0.82, 0.82):
+        for y in (4.66, 5.9):
+            cylinder_y("Hatch captive bolt", (x, y, 2.37), 0.085, 0.08, GOLD, 16)
+    for side in (-1, 1):
+        for row_y in (4.15, 4.45, 7.15, 7.45):
+            for z in (2.95, 3.2, 3.45):
+                cylinder_x("Receiver panel rivet", (side * 2.18, row_y, z), 0.035, 0.045, GOLD, 12)
+        for index in range(7):
+            box("Receiver cooling louver", (side * 2.0, 4.6 + index * 0.24, 1.78), (0.12, 0.12, 0.035), EDGE, 0.012)
+        for z, color in ((2.0, ACCENT), (2.23, GOLD), (2.46, LIGHT)):
+            cylinder_x("Receiver status jewel", (side * 2.205, 6.35, z), 0.065, 0.05, color, 16)
 
     # Cradle, trunnions and visible elevation actuators.
     box("Cradle crossbeam", (0, 0.5, 1.95), (6.8, 3.1, 0.65), STEEL, 0.16)
@@ -243,13 +319,8 @@ def main():
     PREVIEW_OUT.parent.mkdir(parents=True, exist_ok=True)
     build()
     asset_objects = list(bpy.context.scene.objects)
-    # Bake the Blender-to-Godot forward-axis correction into the actual top-level
-    # asset transforms. The runtime GLTF importer can omit an empty scene root's
-    # rotation, so the direction must live on the cannon and range objects.
-    direction_correction = Matrix.Rotation(math.pi, 4, "Z")
-    for obj in asset_objects:
-        if obj.parent is None or obj.parent not in asset_objects:
-            obj.matrix_world = direction_correction @ obj.matrix_world
+    # Blender's -Y muzzle axis converts to Godot +Z in glTF. Godot wraps this
+    # scene in a visible 180-degree yaw node so the muzzle faces downrange -Z.
     build_preview_studio()
     bpy.ops.render.render(write_still=True)
     bpy.ops.object.select_all(action="SELECT")

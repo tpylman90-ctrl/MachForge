@@ -20,6 +20,9 @@ var launch_angle := 12.0
 var projectile_preview: Node3D
 var flight_projectile: Node3D
 var cannon_barrel_pivot: Node3D
+var cannon_muzzle_marker: Node3D
+var cannon_breech_marker: Node3D
+var cannon_facing: Node3D
 var range_camera: Camera3D
 var trajectory_instance: MeshInstance3D
 var telemetry_label: Label
@@ -30,6 +33,15 @@ var flight_active := false
 var flight_start_position := Vector3.ZERO
 var selected_finish := Color(0.82, 0.56, 0.23)
 var finish_buttons: Array[Button] = []
+var shape_editor: Control
+var profile_points: Array[Vector2] = [
+	Vector2(0.08, 0.055),
+	Vector2(0.19, 0.135),
+	Vector2(0.40, 0.18),
+	Vector2(0.78, 0.18),
+	Vector2(0.96, 0.12),
+]
+var selected_profile_handle := -1
 
 
 func _ready() -> void:
@@ -135,13 +147,29 @@ func _add_cannon() -> void:
 		return
 	cannon.name = "BlenderRangeCannon"
 	cannon.position = Vector3(0.0, 0.0, 0.0)
-	add_child(cannon)
+	cannon_facing = Node3D.new()
+	cannon_facing.name = "CannonForwardCorrection"
+	add_child(cannon_facing)
+	cannon_facing.add_child(cannon)
 	_apply_compatibility_materials(cannon)
 	cannon_barrel_pivot = cannon.find_child("ElevatingTube", true, false) as Node3D
+	cannon_muzzle_marker = cannon.find_child("MuzzleExit", true, false) as Node3D
+	cannon_breech_marker = cannon.find_child("BreechReference", true, false) as Node3D
+	if is_instance_valid(cannon_muzzle_marker) and is_instance_valid(cannon_breech_marker):
+		var barrel_forward := cannon_muzzle_marker.global_position - cannon_breech_marker.global_position
+		if barrel_forward.z > 0.0:
+			cannon_facing.rotation.y = PI
+	else:
+		# The source asset uses Blender -Y for the muzzle, which exports as Godot +Z.
+		cannon_facing.rotation.y = PI
 	_update_cannon_aim()
 
 
 func _muzzle_position() -> Vector3:
+	if is_instance_valid(cannon_muzzle_marker):
+		return cannon_muzzle_marker.global_position
+	if is_instance_valid(cannon_barrel_pivot):
+		return cannon_barrel_pivot.to_global(Vector3(0.0, 0.0, 6.47))
 	var muzzle_offset := Vector3(0.0, 0.0, -6.47).rotated(Vector3.RIGHT, deg_to_rad(launch_angle))
 	return Vector3(0.0, 3.6, 0.0) + muzzle_offset
 
@@ -160,9 +188,13 @@ func _apply_compatibility_materials(root: Node) -> void:
 			for surface_index in range(mesh_instance.mesh.get_surface_count()):
 				var source_material := mesh_instance.mesh.surface_get_material(surface_index) as StandardMaterial3D
 				var surface_color := Color(0.34, 0.42, 0.43)
+				var surface_roughness := 0.48
+				var surface_metallic := 0.28
 				if source_material != null:
 					surface_color = source_material.albedo_color
-				mesh_instance.set_surface_override_material(surface_index, _make_material(surface_color, 0.7))
+					surface_roughness = source_material.roughness
+					surface_metallic = source_material.metallic
+				mesh_instance.set_surface_override_material(surface_index, _make_material(surface_color, surface_roughness, surface_metallic))
 	for child in root.get_children():
 		_apply_compatibility_materials(child)
 
@@ -271,10 +303,10 @@ func _add_cylinder(node_name: String, radius: float, height: float, location: Ve
 	return instance
 
 
-func _make_material(color: Color, roughness: float = 0.6) -> StandardMaterial3D:
+func _make_material(color: Color, roughness: float = 0.6, metallic: float = 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
+	material.metallic = metallic
 	material.roughness = roughness
 	return material
 
@@ -306,10 +338,9 @@ func _build_ui() -> void:
 	scroll.add_child(left_content)
 
 	_add_title(left_content, "MACHFORGE", "PROJECTILE WORKSHOP")
-	_add_section(left_content, "SHAPE YOUR DESIGN")
+	_add_section(left_content, "SCULPT THE PROJECTILE")
+	_add_shape_editor(left_content)
 	_add_slider(left_content, "Body length", 1.2, 5.0, 0.1, body_length, " m", 1, "body_length", true)
-	_add_slider(left_content, "Body radius", 0.08, 0.32, 0.01, body_radius, " m", 2, "body_radius", true)
-	_add_slider(left_content, "Nose fullness", 0.0, 1.0, 0.01, nose_fullness, "", 2, "nose_fullness", true)
 	_add_fin_picker(left_content)
 	_add_slider(left_content, "Fin span", 0.15, 0.8, 0.01, fin_span, " m", 2, "fin_span", true)
 	_add_section(left_content, "VIRTUAL TEST SETUP")
@@ -379,6 +410,122 @@ func _add_section(parent: VBoxContainer, title: String) -> void:
 	var label := _make_label(title, 12, Color(0.62, 0.77, 0.80))
 	label.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	parent.add_child(label)
+
+
+func _add_shape_editor(parent: VBoxContainer) -> void:
+	shape_editor = Control.new()
+	shape_editor.name = "ProjectileProfileEditor"
+	shape_editor.custom_minimum_size = Vector2(280.0, 190.0)
+	shape_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shape_editor.mouse_filter = Control.MOUSE_FILTER_STOP
+	shape_editor.draw.connect(_draw_profile_editor.bind(shape_editor))
+	shape_editor.gui_input.connect(_on_profile_input.bind(shape_editor))
+	parent.add_child(shape_editor)
+	parent.add_child(_make_label("DRAG NODES TO SCULPT THE SIDE PROFILE", 10, TEXT_MUTED))
+
+
+func _profile_handle_position(editor: Control, point: Vector2) -> Vector2:
+	var margin := 24.0
+	var center_y := editor.size.y * 0.54
+	var half_height := editor.size.y * 0.34
+	return Vector2(lerpf(margin, editor.size.x - margin, point.x), center_y - point.y / 0.32 * half_height)
+
+
+func _draw_profile_editor(editor: Control) -> void:
+	editor.draw_style_box(_profile_panel_style(), Rect2(Vector2.ZERO, editor.size))
+	var margin := 24.0
+	var center_y := editor.size.y * 0.54
+	var half_height := editor.size.y * 0.34
+	var left := margin
+	var right := editor.size.x - margin
+	editor.draw_line(Vector2(left, center_y), Vector2(right, center_y), Color(0.40, 0.55, 0.58, 0.65), 1.0)
+	for fraction in [0.25, 0.5, 0.75]:
+		var y := center_y - fraction * half_height
+		editor.draw_line(Vector2(left, y), Vector2(right, y), Color(0.20, 0.32, 0.36, 0.65), 1.0)
+	var upper := PackedVector2Array([Vector2(left, center_y)])
+	for profile_point in profile_points:
+		upper.append(_profile_handle_position(editor, profile_point))
+	upper.append(Vector2(right, center_y))
+	var silhouette := upper.duplicate()
+	for i in range(upper.size() - 1, -1, -1):
+		silhouette.append(Vector2(upper[i].x, center_y * 2.0 - upper[i].y))
+	editor.draw_colored_polygon(silhouette, Color(0.035, 0.42, 0.43, 0.76))
+	for i in range(upper.size() - 1):
+		editor.draw_line(upper[i], upper[i + 1], ACCENT, 3.0, true)
+		editor.draw_line(Vector2(upper[i].x, center_y * 2.0 - upper[i].y), Vector2(upper[i + 1].x, center_y * 2.0 - upper[i + 1].y), ACCENT, 3.0, true)
+	for i in range(profile_points.size()):
+		var handle := _profile_handle_position(editor, profile_points[i])
+		var fill := Color(0.95, 0.68, 0.25) if i == selected_profile_handle else TEXT_MAIN
+		editor.draw_circle(handle, 9.0, Color(0.02, 0.09, 0.11))
+		editor.draw_circle(handle, 5.0, fill)
+	editor.draw_string(ThemeDB.fallback_font, Vector2(left, editor.size.y - 8.0), "NOSE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, TEXT_MUTED)
+	editor.draw_string(ThemeDB.fallback_font, Vector2(right - 30.0, editor.size.y - 8.0), "TAIL", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, TEXT_MUTED)
+
+
+func _profile_panel_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.025, 0.045, 0.059, 0.96)
+	style.border_color = Color(0.16, 0.35, 0.39, 0.85)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	return style
+
+
+func _on_profile_input(event: InputEvent, editor: Control) -> void:
+	var pointer := Vector2.ZERO
+	var pressed := false
+	var released := false
+	var motion := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		pointer = event.position
+		pressed = event.pressed
+		released = not event.pressed
+	elif event is InputEventMouseMotion:
+		pointer = event.position
+		motion = true
+	elif event is InputEventScreenTouch:
+		pointer = event.position
+		pressed = event.pressed
+		released = not event.pressed
+	elif event is InputEventScreenDrag:
+		pointer = event.position
+		motion = true
+	if pressed:
+		selected_profile_handle = -1
+		for index in range(profile_points.size()):
+			if _profile_handle_position(editor, profile_points[index]).distance_to(pointer) <= 24.0:
+				selected_profile_handle = index
+				break
+		if selected_profile_handle >= 0:
+			_update_profile_handle(pointer, editor)
+			editor.accept_event()
+	elif released:
+		selected_profile_handle = -1
+		editor.queue_redraw()
+	elif motion and selected_profile_handle >= 0:
+		_update_profile_handle(pointer, editor)
+		editor.accept_event()
+
+
+func _update_profile_handle(pointer: Vector2, editor: Control) -> void:
+	var margin := 24.0
+	var half_height := editor.size.y * 0.34
+	var center_y := editor.size.y * 0.54
+	var new_x := clampf((pointer.x - margin) / maxf(editor.size.x - margin * 2.0, 1.0), 0.0, 1.0)
+	var gap := 0.045
+	if selected_profile_handle > 0:
+		new_x = maxf(new_x, profile_points[selected_profile_handle - 1].x + gap)
+	if selected_profile_handle < profile_points.size() - 1:
+		new_x = minf(new_x, profile_points[selected_profile_handle + 1].x - gap)
+	var radius := clampf((center_y - pointer.y) / maxf(half_height, 1.0) * 0.32, 0.018, 0.32)
+	profile_points[selected_profile_handle] = Vector2(new_x, radius)
+	body_radius = 0.0
+	for profile_point in profile_points:
+		body_radius = maxf(body_radius, profile_point.y)
+	nose_fullness = clampf(1.0 - profile_points[0].y / maxf(body_radius, 0.01), 0.0, 1.0)
+	_rebuild_preview()
+	if is_instance_valid(shape_editor):
+		shape_editor.queue_redraw()
 
 
 func _make_label(text_value: String, size: int, color: Color) -> Label:
@@ -475,16 +622,11 @@ func _rebuild_preview() -> void:
 
 func _build_body_mesh(length: float, radius: float, fullness: float) -> ArrayMesh:
 	var rings: Array[Vector2] = []
-	var tip_z := -length * 0.5
-	var nose_length := length * 0.36
-	var exponent := lerpf(0.58, 2.2, fullness)
-	for index in range(9):
-		var t := float(index) / 8.0
-		var ring_radius := radius * pow(t, exponent)
-		rings.append(Vector2(tip_z + nose_length * t, maxf(ring_radius, 0.006)))
-	rings.append(Vector2(length * 0.08, radius))
-	rings.append(Vector2(length * 0.38, radius))
-	rings.append(Vector2(length * 0.48, radius * 0.82))
+	rings.append(Vector2(-length * 0.5, 0.006))
+	for profile_point in profile_points:
+		var axial_position := -length * 0.5 + profile_point.x * length
+		rings.append(Vector2(axial_position, maxf(profile_point.y, 0.006)))
+	rings.append(Vector2(length * 0.5, maxf(profile_points[-1].y * 0.72, 0.006)))
 
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
