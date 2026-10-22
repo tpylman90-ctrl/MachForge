@@ -140,8 +140,8 @@ def build():
     barrel_parts.append(cylinder_y("Accumulator end cap", (0, 7.48, 3.6), 1.17, 0.34, STEEL))
     barrel_parts.append(torus_y("Accumulator seam", (0, 5.2, 3.6), 1.08, 0.08, ACCENT))
     for x in (-0.57, 0.57):
-        barrel_parts.append(cylinder_y("Pressure manifold", (x, 6.22, 5.34), 0.2, 2.0, STEEL, 24))
-        barrel_parts.append(cylinder_y("Manifold end fitting", (x, 7.25, 5.34), 0.28, 0.18, GOLD, 24))
+        barrel_parts.append(cylinder_y("Pressure manifold", (x, 6.22, 4.4), 0.2, 2.0, STEEL, 24))
+        barrel_parts.append(cylinder_y("Manifold end fitting", (x, 7.25, 4.4), 0.28, 0.18, GOLD, 24))
 
     barrel_pivot = bpy.data.objects.new("ElevatingTube", None)
     bpy.context.scene.collection.objects.link(barrel_pivot)
