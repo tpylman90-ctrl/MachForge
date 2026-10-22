@@ -17,9 +17,11 @@ Clone with submodules so the plugins are present:
 
 ```sh
 git clone --recurse-submodules https://github.com/tpylman90-ctrl/MachForge.git
+cd MachForge
+bash tools/setup_addons.sh
 ```
 
-If you cloned without them, run `git submodule update --init --recursive`.
+If you cloned without them, run `git submodule update --init --recursive`, then `bash tools/setup_addons.sh`.
 
 ## Blender-to-Godot assets
 

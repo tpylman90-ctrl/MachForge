@@ -4,6 +4,8 @@
 .export/
 exports/
 build/
+addons/tau-plot/
+addons/gdUnit4/
 
 # Blender backups and temporary files
 *.blend1

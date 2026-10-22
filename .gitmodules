@@ -1,6 +1,6 @@
-[submodule "addons/tau-plot"]
-	path = addons/tau-plot
+[submodule "vendor/tau-plot"]
+	path = vendor/tau-plot
 	url = https://github.com/ze2j/tau-plot.git
-[submodule "addons/gdUnit4"]
-	path = addons/gdUnit4
+[submodule "vendor/gdUnit4"]
+	path = vendor/gdUnit4
 	url = https://github.com/godot-gdunit-labs/gdUnit4.git

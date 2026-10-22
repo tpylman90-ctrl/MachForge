@@ -23,11 +23,15 @@ jobs:
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.7.2
+          use-dotnet: false
 
       - name: Set up Blender
         uses: bradyajohnston/setup-blender@v5
         with:
           version: latest
+
+      - name: Prepare Godot add-ons
+        run: bash tools/setup_addons.sh
 
       - name: Verify Blender
         run: blender --background --python-expr "import bpy; print('Blender', bpy.app.version_string)"
@@ -36,9 +40,7 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Test flight model
-        run: |
-          chmod +x addons/gdUnit4/addons/gdUnit4/runtest.sh
-          addons/gdUnit4/addons/gdUnit4/runtest.sh --godot_binary "$(command -v godot)" -a res://test
+        run: godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://test
 
       - name: Smoke test starter scene
         run: godot --headless --path . --quit-after 2
