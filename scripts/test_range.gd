@@ -1,80 +1,5 @@
 extends Node3D
 
-class RangeCanvas extends Control:
-	var body_length := 3.0
-	var body_radius := 0.18
-	var nose_fullness := 0.35
-	var fin_count := 4
-	var fin_span := 0.45
-	var launch_angle := 12.0
-	var finish_color := Color(0.82, 0.56, 0.23)
-	var range_m := 0.0
-	var altitude_m := 0.0
-	var has_launched := false
-
-	func _draw() -> void:
-		var viewport := size
-		if viewport.x < 100.0 or viewport.y < 100.0:
-			return
-		draw_rect(Rect2(Vector2.ZERO, viewport), Color(0.035, 0.075, 0.11))
-		var horizon := viewport.y * 0.65
-		draw_rect(Rect2(Vector2(0.0, horizon), Vector2(viewport.x, viewport.y - horizon)), Color(0.10, 0.15, 0.17))
-		draw_line(Vector2(0.0, horizon), Vector2(viewport.x, horizon), Color(0.30, 0.45, 0.48), 2.0, true)
-
-		var range_start := viewport.x * 0.285
-		var range_end := viewport.x * 0.755
-		var track_y := horizon + 34.0
-		draw_line(Vector2(range_start, track_y), Vector2(range_end, track_y), Color(0.37, 0.55, 0.57), 2.0, true)
-		for marker_index in range(17):
-			var distance := float(marker_index) * 250.0
-			var x := lerpf(range_start, range_end, distance / 4000.0)
-			var tick_height := 15.0 if marker_index % 2 == 0 else 8.0
-			draw_line(Vector2(x, track_y - tick_height), Vector2(x, track_y + tick_height), Color(0.58, 0.76, 0.75), 1.5, true)
-			if marker_index % 2 == 0:
-				draw_string(ThemeDB.fallback_font, Vector2(x + 4.0, track_y + 29.0), "%d m" % int(distance), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.72, 0.84, 0.84))
-
-		draw_rect(Rect2(Vector2(range_start - 28.0, track_y - 2.0), Vector2(92.0, 11.0)), Color(0.24, 0.33, 0.36))
-		draw_rect(Rect2(Vector2(range_start - 17.0, track_y - 24.0), Vector2(22.0, 24.0)), Color(0.30, 0.40, 0.43))
-		draw_line(Vector2(range_start - 7.0, track_y - 21.0), Vector2(range_start + 49.0, track_y - 39.0), Color(0.56, 0.66, 0.68), 12.0, true)
-		draw_line(Vector2(range_start - 7.0, track_y - 21.0), Vector2(range_start + 49.0, track_y - 39.0), Color(0.20, 0.29, 0.32), 3.0, true)
-		draw_circle(Vector2(range_start + 53.0, track_y - 40.0), 7.0, Color(0.72, 0.79, 0.78))
-
-		var fraction := clampf(range_m / 4000.0, 0.0, 1.0) if has_launched else 0.0
-		var projectile_x := lerpf(range_start + 62.0, range_end, fraction) if has_launched else range_start + 78.0
-		var projectile_y := track_y - 47.0 - clampf(altitude_m, 0.0, 180.0) * 1.4 if has_launched else track_y - 42.0
-		if has_launched:
-			draw_line(Vector2(range_start + 62.0, track_y - 42.0), Vector2(projectile_x - 8.0, projectile_y), Color(0.18, 0.86, 0.76, 0.55), 2.0, true)
-		_draw_projectile(Vector2(projectile_x, projectile_y), clampf(body_length * 12.0, 26.0, 58.0), clampf(body_radius * 23.0, 2.5, 8.0), deg_to_rad(launch_angle))
-
-	func _draw_projectile(center: Vector2, length_px: float, radius_px: float, angle: float) -> void:
-		var nose_x := length_px * 0.5
-		var shoulder_x := length_px * 0.18
-		var tail_x := -length_px * 0.5
-		var shape := PackedVector2Array([
-			_project(Vector2(nose_x, 0.0), center, angle),
-			_project(Vector2(shoulder_x, -radius_px), center, angle),
-			_project(Vector2(tail_x, -radius_px), center, angle),
-			_project(Vector2(tail_x, radius_px), center, angle),
-			_project(Vector2(shoulder_x, radius_px), center, angle)
-		])
-		draw_colored_polygon(shape, finish_color)
-		draw_polyline(PackedVector2Array([shape[0], shape[1], shape[2], shape[3], shape[4], shape[0]]), Color(0.91, 0.96, 0.98), 1.0, true)
-		if fin_count > 0:
-			for fin_index in range(mini(fin_count, 4)):
-				var fin_angle := TAU * float(fin_index) / float(fin_count)
-				var fin_points := PackedVector2Array([
-					_project(Vector2(tail_x + 2.0, 0.0), center, angle),
-					_project(Vector2(tail_x - length_px * 0.18, -radius_px * 1.9), center, angle + fin_angle),
-					_project(Vector2(tail_x + length_px * 0.08, -radius_px * 0.7), center, angle + fin_angle)
-				])
-				draw_colored_polygon(fin_points, finish_color.darkened(0.25))
-
-	func _project(point: Vector2, center: Vector2, angle: float) -> Vector2:
-		var c := cos(angle)
-		var s := sin(angle)
-		return center + Vector2(point.x * c + point.y * s, -point.x * s + point.y * c)
-
-
 const FlightSolver = preload("res://scripts/flight_solver.gd")
 const RANGE_MARKER_SPACING := 250.0
 const RANGE_MARKER_COUNT := 16
@@ -93,14 +18,15 @@ var launch_angle := 12.0
 
 var projectile_preview: Node3D
 var flight_projectile: Node3D
+var cannon_barrel_pivot: Node3D
 var range_camera: Camera3D
 var trajectory_instance: MeshInstance3D
-var range_visual: RangeCanvas
 var telemetry_label: Label
 var result_label: Label
 var flight_samples: Array[Dictionary] = []
 var flight_elapsed := 0.0
 var flight_active := false
+var flight_start_position := Vector3.ZERO
 var selected_finish := Color(0.82, 0.56, 0.23)
 var finish_buttons: Array[Button] = []
 
@@ -126,11 +52,7 @@ func _process(delta: float) -> void:
 	var camera_target := position
 	range_camera.global_position = range_camera.global_position.lerp(position + camera_offset, 1.0 - exp(-delta * 3.5))
 	range_camera.look_at(camera_target, Vector3.UP)
-	var range_value := maxf(0.0, -position.z - 5.0)
-	range_visual.range_m = range_value
-	range_visual.altitude_m = float(position.y)
-	range_visual.has_launched = true
-	range_visual.queue_redraw()
+	var range_value := maxf(0.0, flight_start_position.z - position.z)
 	telemetry_label.text = "FLIGHT TELEMETRY\n\nRange     %s m\nSpeed     %s m/s\nMach      %s\nAltitude  %s m\nTime      %s s" % [
 		_format_number(range_value, 0),
 		_format_number(float(sample["speed"]), 1),
@@ -140,57 +62,62 @@ func _process(delta: float) -> void:
 	]
 	if index >= flight_samples.size() - 1:
 		flight_active = false
-		var final_range := maxf(0.0, -position.z - 5.0)
+		var final_range := maxf(0.0, flight_start_position.z - position.z)
 		result_label.text = "TEST COMPLETE  •  %s m" % _format_number(final_range, 0)
 		result_label.add_theme_color_override("font_color", ACCENT)
 
 
 func _build_world() -> void:
-	var visual_layer := CanvasLayer.new()
-	visual_layer.layer = 1
-	add_child(visual_layer)
-	range_visual = RangeCanvas.new()
-	range_visual.name = "RangeFallbackView"
-	range_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	range_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_layer.add_child(range_visual)
-
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.17, 0.29, 0.37)
+	environment.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color(0.16, 0.34, 0.48)
+	sky_material.sky_horizon_color = Color(0.77, 0.75, 0.64)
+	sky_material.ground_bottom_color = Color(0.23, 0.27, 0.24)
+	sky_material.ground_horizon_color = Color(0.55, 0.61, 0.56)
+	sky_material.sun_angle_max = 14.0
+	sky.sky_material = sky_material
+	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.46, 0.59, 0.68)
-	environment.ambient_light_energy = 0.8
+	environment.ambient_light_color = Color(0.63, 0.75, 0.79)
+	environment.ambient_light_energy = 0.72
+	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.57, 0.71, 0.74)
+	environment.fog_density = 0.00035
 	environment_node.environment = environment
 	add_child(environment_node)
 
 	range_camera = Camera3D.new()
 	range_camera.name = "RangeCamera"
-	range_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	range_camera.size = 78.0
-	range_camera.position = Vector3(48.0, 64.0, 38.0)
+	range_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	range_camera.fov = 53.0
+	range_camera.position = Vector3(31.0, 18.0, 29.0)
 	add_child(range_camera)
-	# Node3D.look_at() needs the camera inside the scene tree so its global
-	# transform is valid. Calling it before add_child() leaves the default view.
-	range_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.UP)
+	range_camera.look_at(Vector3(0.0, 3.0, -20.0), Vector3.UP)
 	range_camera.make_current()
 
 	var sunlight := DirectionalLight3D.new()
-	sunlight.rotation_degrees = Vector3(-52.0, -24.0, 0.0)
-	sunlight.light_energy = 1.6
-	# Keep the GLES compatibility renderer within mobile fragment uniform limits.
-	sunlight.shadow_enabled = false
+	sunlight.rotation_degrees = Vector3(-38.0, -32.0, 0.0)
+	sunlight.light_energy = 1.15
+	sunlight.shadow_enabled = true
 	add_child(sunlight)
 
-	_add_box("Range Ground", Vector3(360.0, 0.2, 4300.0), Vector3(0.0, -0.18, -1900.0), Color(0.10, 0.15, 0.17))
-	_add_box("Launch Deck", Vector3(18.0, 0.45, 18.0), Vector3(0.0, 0.15, 1.0), Color(0.18, 0.24, 0.27))
+	_add_box("Dry range terrain", Vector3(900.0, 1.2, 4700.0), Vector3(0.0, -0.85, -2050.0), Color(0.36, 0.38, 0.32))
+	_add_box("Concrete test lane", Vector3(74.0, 0.18, 4200.0), Vector3(0.0, -0.13, -2020.0), Color(0.23, 0.28, 0.29))
+	_add_box("Left lane stripe", Vector3(0.45, 0.035, 4200.0), Vector3(-35.0, -0.02, -2020.0), Color(0.92, 0.59, 0.12))
+	_add_box("Right lane stripe", Vector3(0.45, 0.035, 4200.0), Vector3(35.0, -0.02, -2020.0), Color(0.92, 0.59, 0.12))
+	_add_range_course()
 	_add_cannon()
+	_add_range_facilities()
 	_add_distance_markers()
+	_add_distant_berm()
 
 	projectile_preview = Node3D.new()
 	projectile_preview.name = "ProjectilePreview"
-	projectile_preview.position = Vector3(0.0, 2.4, -5.2)
+	projectile_preview.position = _muzzle_position()
 	add_child(projectile_preview)
 
 	flight_projectile = Node3D.new()
@@ -205,25 +132,104 @@ func _build_world() -> void:
 
 
 func _add_cannon() -> void:
-	_add_cylinder("Cannon Pedestal", 3.0, 1.0, Vector3(0.0, 0.8, 0.2), Color(0.27, 0.34, 0.38))
-	_add_box("Cannon Cradle", Vector3(4.0, 0.8, 5.0), Vector3(0.0, 1.5, -1.0), Color(0.19, 0.25, 0.29))
-	_add_cylinder("Cannon Barrel", 0.86, 6.4, Vector3(0.0, 2.0, -3.0), Color(0.40, 0.49, 0.53), PI * 0.5)
-	_add_cylinder("Muzzle Ring", 1.02, 0.34, Vector3(0.0, 2.0, -6.15), Color(0.58, 0.66, 0.68), PI * 0.5)
+	var cannon_scene := load("res://assets/godot_models/machforge_range_cannon.glb") as PackedScene
+	if cannon_scene != null:
+		var cannon := cannon_scene.instantiate()
+		cannon.name = "BlenderRangeCannon"
+		cannon.position = Vector3(0.0, 0.0, 0.0)
+		add_child(cannon)
+		cannon_barrel_pivot = cannon.find_child("ElevatingTube", true, false) as Node3D
+		_update_cannon_aim()
+	else:
+		_add_cannon_fallback()
+
+
+func _muzzle_position() -> Vector3:
+	var muzzle_offset := Vector3(0.0, 0.0, -6.47).rotated(Vector3.RIGHT, deg_to_rad(launch_angle))
+	return Vector3(0.0, 4.15, 0.0) + muzzle_offset
+
+
+func _update_cannon_aim() -> void:
+	if is_instance_valid(cannon_barrel_pivot):
+		cannon_barrel_pivot.rotation.x = deg_to_rad(launch_angle)
+	if is_instance_valid(projectile_preview):
+		projectile_preview.position = _muzzle_position()
+
+
+func _add_cannon_fallback() -> void:
+	_add_box("Armored firing deck", Vector3(17.0, 0.75, 19.0), Vector3(0.0, 0.56, 0.0), Color(0.16, 0.21, 0.23))
+	_add_box("Cradle crossbeam", Vector3(6.8, 0.65, 3.1), Vector3(0.0, 2.28, -0.5), Color(0.10, 0.16, 0.19))
+	_add_cylinder("Pressure barrel", 1.04, 10.4, Vector3(0.0, 4.15, -1.2), Color(0.38, 0.48, 0.50), PI * 0.5)
+	_add_cylinder("Muzzle crown", 1.2, 0.3, Vector3(0.0, 4.15, -6.47), Color(0.03, 0.69, 0.63), PI * 0.5)
+	_add_cylinder("Breech block", 1.38, 2.1, Vector3(0.0, 4.15, 4.05), Color(0.10, 0.16, 0.19), PI * 0.5)
+
+
+func _add_range_course() -> void:
+	# A fine centerline keeps the firing axis readable at launch and fades away
+	# naturally with perspective down the long range.
+	for segment in range(84):
+		var z_position := -35.0 - float(segment) * 48.0
+		_add_box("Centerline %03d" % segment, Vector3(0.38, 0.035, 22.0), Vector3(0.0, -0.015, z_position), Color(0.74, 0.80, 0.74))
+	for marker_index in range(1, RANGE_MARKER_COUNT + 1):
+		var distance := RANGE_MARKER_SPACING * marker_index
+		_add_box("Range band %02d" % marker_index, Vector3(72.0, 0.045, 1.2), Vector3(0.0, -0.015, -distance), Color(0.62, 0.66, 0.58))
+		_add_box("Amber band marker %02d" % marker_index, Vector3(1.0, 0.055, 5.0), Vector3(-27.0, 0.02, -distance), Color(0.95, 0.49, 0.08))
+
+
+func _add_range_facilities() -> void:
+	# One compact control shack beside the launch deck anchors the scene and
+	# gives the firing site a human scale.
+	_add_box("Range control cabin", Vector3(11.0, 5.5, 9.0), Vector3(19.0, 2.75, 3.0), Color(0.17, 0.23, 0.25))
+	_add_box("Cabin roof lip", Vector3(12.0, 0.5, 10.0), Vector3(19.0, 5.6, 3.0), Color(0.10, 0.16, 0.18))
+	for window_index in range(4):
+		_add_box("Cabin window %d" % window_index, Vector3(1.45, 1.45, 0.08), Vector3(15.3 + float(window_index) * 2.5, 3.2, -1.58), Color(0.13, 0.73, 0.74))
+	_add_box("Control cabin door", Vector3(1.35, 2.6, 0.1), Vector3(22.5, 2.3, -1.56), Color(0.91, 0.53, 0.12))
+	for side in [-1.0, 1.0]:
+		for index in range(8):
+			var z_position := 12.0 - float(index) * 22.0
+			_add_box("Safety bollard", Vector3(0.48, 1.3, 0.48), Vector3(side * 11.0, 0.65, z_position), Color(0.92, 0.50, 0.10))
+		# Low range lights along the launch approach.
+		for index in range(5):
+			var z_position := -45.0 - float(index) * 85.0
+			_add_cylinder("Range light mast", 0.13, 7.5, Vector3(side * 43.0, 3.75, z_position), Color(0.22, 0.29, 0.30))
+			_add_box("Range light head", Vector3(1.3, 0.32, 0.55), Vector3(side * 43.0, 7.55, z_position), Color(0.95, 0.77, 0.36))
+
+
+func _add_distant_berm() -> void:
+	# Low, faceted hills soften the skyline and contain the test lane.
+	var hill_material := _make_material(Color(0.26, 0.34, 0.30), 0.94)
+	for index in range(7):
+		var hill := MeshInstance3D.new()
+		hill.name = "Faceted horizon berm %d" % index
+		var mesh := SphereMesh.new()
+		mesh.radial_segments = 10
+		mesh.rings = 5
+		mesh.radius = 1.0
+		mesh.height = 1.35
+		hill.mesh = mesh
+		var x_position := -560.0 + float(index) * 185.0
+		hill.position = Vector3(x_position, 4.0 + float(index % 3) * 3.0, -4380.0 - float(index % 2) * 55.0)
+		hill.scale = Vector3(150.0 + float(index % 3) * 28.0, 48.0 + float(index % 2) * 16.0, 90.0)
+		hill.material_override = hill_material
+		hill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(hill)
 
 
 func _add_distance_markers() -> void:
 	for marker_index in range(1, RANGE_MARKER_COUNT + 1):
 		var distance := RANGE_MARKER_SPACING * marker_index
 		var z_position := -distance
-		_add_box("Marker %d" % marker_index, Vector3(28.0, 0.045, 0.28), Vector3(0.0, 0.015, z_position), Color(0.56, 0.78, 0.74))
-		var label := Label3D.new()
-		label.text = "%d m" % int(distance)
-		label.position = Vector3(16.0, 0.08, z_position - 8.0)
-		label.font_size = 48
-		label.pixel_size = 0.025
-		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label.modulate = Color(0.69, 0.82, 0.84)
-		add_child(label)
+		if marker_index % 2 == 0:
+			_add_box("Distance sign post %d" % marker_index, Vector3(0.4, 7.0, 0.4), Vector3(-44.0, 3.5, z_position), Color(0.15, 0.22, 0.23))
+			_add_box("Distance sign board %d" % marker_index, Vector3(8.0, 4.2, 0.45), Vector3(-44.0, 7.0, z_position), Color(0.08, 0.15, 0.17))
+			var label := Label3D.new()
+			label.text = "%d m" % int(distance)
+			label.position = Vector3(-44.0, 7.0, z_position - 0.25)
+			label.font_size = 72
+			label.pixel_size = 0.045
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.modulate = Color(0.28, 0.96, 0.82)
+			add_child(label)
 
 
 func _add_box(node_name: String, size: Vector3, location: Vector3, color: Color) -> MeshInstance3D:
@@ -256,8 +262,8 @@ func _add_cylinder(node_name: String, radius: float, height: float, location: Ve
 
 func _make_material(color: Color, roughness: float = 0.6) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
+	material.metallic = clampf((0.8 - roughness) * 0.28, 0.0, 0.42)
 	material.roughness = roughness
 	return material
 
@@ -393,6 +399,8 @@ func _add_slider(parent: VBoxContainer, title: String, minimum: float, maximum: 
 		set(property_name, value)
 		if edits_shape:
 			_rebuild_preview()
+		elif property_name == "launch_angle":
+			_update_cannon_aim()
 	)
 	parent.add_child(slider)
 	return slider
@@ -453,15 +461,6 @@ func _rebuild_preview() -> void:
 		fin.material_override = _make_material(selected_finish.darkened(0.24), 0.38)
 		projectile_preview.add_child(fin)
 
-	range_visual.body_length = body_length
-	range_visual.body_radius = body_radius
-	range_visual.nose_fullness = nose_fullness
-	range_visual.fin_count = fin_count
-	range_visual.fin_span = fin_span
-	range_visual.launch_angle = launch_angle
-	range_visual.finish_color = selected_finish
-	range_visual.queue_redraw()
-
 
 func _build_body_mesh(length: float, radius: float, fullness: float) -> ArrayMesh:
 	var rings: Array[Vector2] = []
@@ -502,8 +501,9 @@ func _build_body_mesh(length: float, radius: float, fullness: float) -> ArrayMes
 
 
 func _launch_test() -> void:
+	flight_start_position = _muzzle_position()
 	flight_samples = FlightSolver.simulate(
-		Vector3(0.0, 2.45, -5.2),
+		flight_start_position,
 		lerpf(90.0, 240.0, launch_drive / 100.0),
 		launch_angle,
 		body_length,
@@ -545,10 +545,6 @@ func _launch_test() -> void:
 	flight_projectile.global_position = flight_samples[0]["position"]
 	flight_elapsed = 0.0
 	flight_active = true
-	range_visual.has_launched = true
-	range_visual.range_m = 0.0
-	range_visual.altitude_m = 2.45
-	range_visual.queue_redraw()
 	result_label.text = "SIMULATING FLIGHT..."
 	result_label.add_theme_color_override("font_color", ACCENT)
 

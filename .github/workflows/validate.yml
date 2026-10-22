@@ -36,6 +36,9 @@ jobs:
       - name: Verify Blender
         run: blender --background --python-expr "import bpy; print('Blender', bpy.app.version_string)"
 
+      - name: Build Blender range cannon asset
+        run: blender --background --python tools/build_range_cannon.py
+
       - name: Import Godot project
         run: godot --headless --editor --path . --quit
 

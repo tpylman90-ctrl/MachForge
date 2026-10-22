@@ -2,7 +2,7 @@
 
 A Godot and Blender sandbox for designing virtual projectiles and studying their simulated flights.
 
-The current starter slice has live body and nose shaping, fin count and span controls, finish colors, a fixed virtual test cannon, a marked range, and a replay with a trajectory trace and telemetry. The flight solver is a deterministic prototype using game-scale drive settings; it is not yet the final high-fidelity model.
+The first playable slice is a single gas-cannon range. It has a Blender-built pressure cannon and firing deck, an industrial control station, a four-kilometer marked test lane, live projectile shaping, and replay telemetry. The flight solver is still a deterministic prototype using game-scale drive settings; it is not yet the final high-fidelity model.
 
 ## Get the Android test build
 
@@ -12,4 +12,4 @@ This debug APK is for device testing. It is not a Play Store release build.
 
 ## Open the project
 
-Open `project.godot` in Godot 4.7.2. Blender source models go in `assets/blender_source/`; game exports go in `assets/godot_models/`.
+Open `project.godot` in Godot 4.7.2. Build the cannon source and Godot export with `blender --background --python tools/build_range_cannon.py` before importing the project. Editable Blender source goes in `assets/blender_source/`; game exports go in `assets/godot_models/`.

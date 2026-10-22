@@ -37,6 +37,14 @@ jobs:
           use-dotnet: false
           include-templates: true
 
+      - name: Set up Blender
+        uses: bradyajohnston/setup-blender@v5
+        with:
+          version: latest
+
+      - name: Build Blender range cannon asset
+        run: blender --background --python tools/build_range_cannon.py
+
       - name: Prepare Godot add-ons
         run: bash tools/setup_addons.sh
 
@@ -143,4 +151,15 @@ jobs:
           name: MachForge-Android-debug-APK
           path: build/MachForge.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload editable Blender source and Godot model
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MachForge-Range-Cannon-Assets
+          path: |
+            assets/blender_source/machforge_range_cannon.blend
+            assets/godot_models/machforge_range_cannon.glb
+          if-no-files-found: warn
           retention-days: 30
