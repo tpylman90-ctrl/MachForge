@@ -125,10 +125,15 @@ jobs:
             sleep 4
             adb shell pidof com.machforge.app > build/emulator-diagnostics/app-pid.txt || true
             adb logcat -d -v time | grep -Ei 'Godot|AndroidRuntime|FATAL EXCEPTION|MachForge|GodotApp' > build/emulator-diagnostics/logcat.txt || true
+            if grep -Eq 'Fragment shader active uniforms exceed|Program linking failed' build/emulator-diagnostics/logcat.txt; then
+              echo 'Android renderer shader compilation failed.'
+              exit 1
+            fi
             adb shell dumpsys activity activities | grep -Ei 'mResumedActivity|topResumedActivity|machforge|godot' > build/emulator-diagnostics/activity.txt || true
             test -s build/emulator-diagnostics/app-pid.txt
             adb shell screencap -p /sdcard/machforge-screen.png
             adb pull /sdcard/machforge-screen.png build/MachForge-emulator.png
+            python3 tools/validate_android_capture.py build/MachForge-emulator.png
 
       - name: Upload emulator diagnostics
         if: always()
