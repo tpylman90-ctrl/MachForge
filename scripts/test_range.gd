@@ -1,7 +1,7 @@
 extends Node3D
 
 const FlightSolver = preload("res://scripts/flight_solver.gd")
-const CannonScene = preload("res://assets/godot_models/machforge_range_cannon.glb")
+const CANNON_MODEL_PATH := "res://assets/godot_models/machforge_range_cannon.glb"
 const RANGE_MARKER_SPACING := 250.0
 const RANGE_MARKER_COUNT := 16
 const PANEL_DARK := Color(0.035, 0.055, 0.075, 0.94)
@@ -121,7 +121,18 @@ func _build_world() -> void:
 
 
 func _add_cannon() -> void:
-	var cannon := CannonScene.instantiate()
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	var import_error := document.append_from_file(CANNON_MODEL_PATH, state)
+	if import_error != OK:
+		push_warning("Blender cannon could not be loaded (%s); using the range fallback." % error_string(import_error))
+		_add_cannon_fallback()
+		return
+	var cannon := document.generate_scene(state)
+	if cannon == null:
+		push_warning("Blender cannon scene generation failed; using the range fallback.")
+		_add_cannon_fallback()
+		return
 	cannon.name = "BlenderRangeCannon"
 	cannon.position = Vector3(0.0, 0.0, 0.0)
 	add_child(cannon)
