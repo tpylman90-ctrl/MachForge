@@ -40,7 +40,7 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Test flight model
-        run: godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://test
+        run: godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -a res://test
 
       - name: Smoke test starter scene
         run: godot --headless --path . --quit-after 2
