@@ -1,0 +1,31 @@
+; MachForge Godot project
+; Godot 4.7.x, with Jolt enabled for general 3D interactions.
+; Flight dynamics will live in a separate deterministic simulation model.
+
+config_version=5
+
+[application]
+
+config/name="MachForge"
+run/main_scene="res://scenes/test_range.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/tau-plot/plugin.cfg", "res://addons/gdUnit4/plugin.cfg")

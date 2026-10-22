@@ -1,0 +1,26 @@
+# Godot generated files
+.godot/
+.import/
+.export/
+exports/
+build/
+
+# Blender backups and temporary files
+*.blend1
+*.blend2
+*.blend@
+*.tmp
+*.bak
+
+# Keep signing credentials out of Git
+*.jks
+*.keystore
+*.p12
+*.pfx
+android-signing-secrets*
+MachForge-Android-Signing-Backup*
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

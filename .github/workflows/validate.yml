@@ -1,0 +1,39 @@
+name: Validate MachForge
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project and pinned add-ons
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+
+      - name: Set up Blender
+        uses: bradyajohnston/setup-blender@v5
+        with:
+          version: latest
+
+      - name: Verify Blender
+        run: blender --background --python-expr "import bpy; print('Blender', bpy.app.version_string)"
+
+      - name: Import Godot project
+        run: godot --headless --editor --path . --quit
+
+      - name: Smoke test starter scene
+        run: godot --headless --path . --quit-after 2
