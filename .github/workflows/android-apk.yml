@@ -105,6 +105,9 @@ jobs:
             adb logcat -c
             adb shell monkey -p com.machforge.app 1 | tee build/emulator-diagnostics/monkey.txt
             sleep 12
+            # Dismiss Android's first-run immersive-mode education overlay.
+            adb shell input tap 1700 500
+            sleep 2
             adb shell pidof com.machforge.app > build/emulator-diagnostics/app-pid.txt || true
             adb logcat -d -v time | grep -Ei 'Godot|AndroidRuntime|FATAL EXCEPTION|MachForge|GodotApp' > build/emulator-diagnostics/logcat.txt || true
             adb shell dumpsys activity activities | grep -Ei 'mResumedActivity|topResumedActivity|machforge|godot' > build/emulator-diagnostics/activity.txt || true
