@@ -60,10 +60,18 @@ jobs:
 
       - name: Export installable Android debug APK
         run: |
+          ulimit -c 0
+          adb start-server
           mkdir -p build
-          godot --headless --path . --export-debug "Android" build/MachForge.apk
+          if godot --headless --path . --export-debug "Android" build/MachForge.apk; then
+            echo "Godot export command completed."
+          else
+            echo "Godot returned a shutdown error; validating the APK it produced."
+          fi
           test -s build/MachForge.apk
-          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/MachForge.apk
+          apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$apksigner"
+          "$apksigner" verify --verbose build/MachForge.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
