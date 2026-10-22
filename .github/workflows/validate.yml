@@ -35,5 +35,10 @@ jobs:
       - name: Import Godot project
         run: godot --headless --editor --path . --quit
 
+      - name: Test flight model
+        run: |
+          chmod +x addons/gdUnit4/addons/gdUnit4/runtest.sh
+          addons/gdUnit4/addons/gdUnit4/runtest.sh --godot_binary "$(command -v godot)" -a res://test
+
       - name: Smoke test starter scene
         run: godot --headless --path . --quit-after 2
