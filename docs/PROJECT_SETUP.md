@@ -23,6 +23,10 @@ bash tools/setup_addons.sh
 
 If you cloned without them, run `git submodule update --init --recursive`, then `bash tools/setup_addons.sh`.
 
+## Android test APK
+
+The **Build Android APK** GitHub Actions workflow exports an arm64 debug APK on pushes to `main` and on manual runs. Download `MachForge-Android-debug-APK` from the completed run's Artifacts section. The APK is signed with a temporary CI debug key and is intended for testing; do not use it as a Play Store release.
+
 ## Blender-to-Godot assets
 
 Keep editable source models in `assets/blender_source/`; export game-ready `.glb` files to `assets/godot_models/`. Git LFS rules are set for large model source/export files. Do not commit signing credentials or keystores.
