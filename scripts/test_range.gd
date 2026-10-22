@@ -18,6 +18,7 @@ var launch_angle := 12.0
 
 var projectile_preview: Node3D
 var flight_projectile: Node3D
+var range_camera: Camera3D
 var trajectory_instance: MeshInstance3D
 var telemetry_label: Label
 var result_label: Label
@@ -45,6 +46,10 @@ func _process(delta: float) -> void:
 	flight_projectile.global_position = position
 	if velocity.length_squared() > 0.001:
 		flight_projectile.look_at(position + velocity, Vector3.UP)
+	var camera_offset := Vector3(58.0, 82.0, 66.0)
+	var camera_target := position
+	range_camera.global_position = range_camera.global_position.lerp(position + camera_offset, 1.0 - exp(-delta * 3.5))
+	range_camera.look_at(camera_target, Vector3.UP)
 	var range_value := maxf(0.0, -position.z - 5.0)
 	telemetry_label.text = "FLIGHT TELEMETRY\n\nRange     %s m\nSpeed     %s m/s\nMach      %s\nAltitude  %s m\nTime      %s s" % [
 		_format_number(range_value, 0),
@@ -64,24 +69,25 @@ func _build_world() -> void:
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.035, 0.075, 0.11)
+	environment.background_color = Color(0.10, 0.17, 0.21)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.46, 0.59, 0.68)
-	environment.ambient_light_energy = 0.55
+	environment.ambient_light_energy = 0.8
 	environment_node.environment = environment
 	add_child(environment_node)
 
-	var camera := Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 2650.0
-	camera.position = Vector3(180.0, 250.0, 120.0)
-	camera.look_at(Vector3(0.0, 0.0, -1900.0), Vector3.UP)
-	camera.current = true
-	add_child(camera)
+	range_camera = Camera3D.new()
+	range_camera.name = "RangeCamera"
+	range_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	range_camera.size = 190.0
+	range_camera.position = Vector3(58.0, 82.0, 26.0)
+	range_camera.look_at(Vector3(0.0, 0.0, -40.0), Vector3.UP)
+	range_camera.current = true
+	add_child(range_camera)
 
 	var sunlight := DirectionalLight3D.new()
 	sunlight.rotation_degrees = Vector3(-52.0, -24.0, 0.0)
-	sunlight.light_energy = 1.25
+	sunlight.light_energy = 1.6
 	sunlight.shadow_enabled = true
 	add_child(sunlight)
 
@@ -117,7 +123,7 @@ func _add_distance_markers() -> void:
 	for marker_index in range(1, RANGE_MARKER_COUNT + 1):
 		var distance := RANGE_MARKER_SPACING * marker_index
 		var z_position := -distance
-		_add_box("Marker %d" % marker_index, Vector3(28.0, 0.045, 0.28), Vector3(0.0, 0.015, z_position), Color(0.28, 0.42, 0.45))
+		_add_box("Marker %d" % marker_index, Vector3(28.0, 0.045, 0.28), Vector3(0.0, 0.015, z_position), Color(0.40, 0.64, 0.66))
 		var label := Label3D.new()
 		label.text = "%d m" % int(distance)
 		label.position = Vector3(16.0, 0.08, z_position - 8.0)
