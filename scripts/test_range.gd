@@ -90,7 +90,8 @@ func _build_world() -> void:
 	var sunlight := DirectionalLight3D.new()
 	sunlight.rotation_degrees = Vector3(-52.0, -24.0, 0.0)
 	sunlight.light_energy = 1.6
-	sunlight.shadow_enabled = true
+	# Keep the GLES compatibility renderer within mobile fragment uniform limits.
+	sunlight.shadow_enabled = false
 	add_child(sunlight)
 
 	_add_box("Range Ground", Vector3(360.0, 0.2, 4300.0), Vector3(0.0, -0.18, -1900.0), Color(0.10, 0.15, 0.17))
