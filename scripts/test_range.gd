@@ -46,7 +46,7 @@ func _process(delta: float) -> void:
 	flight_projectile.global_position = position
 	if velocity.length_squared() > 0.001:
 		flight_projectile.look_at(position + velocity, Vector3.UP)
-	var camera_offset := Vector3(58.0, 82.0, 66.0)
+	var camera_offset := Vector3(48.0, 64.0, 53.0)
 	var camera_target := position
 	range_camera.global_position = range_camera.global_position.lerp(position + camera_offset, 1.0 - exp(-delta * 3.5))
 	range_camera.look_at(camera_target, Vector3.UP)
@@ -69,7 +69,7 @@ func _build_world() -> void:
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.10, 0.17, 0.21)
+	environment.background_color = Color(0.17, 0.29, 0.37)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.46, 0.59, 0.68)
 	environment.ambient_light_energy = 0.8
@@ -79,11 +79,12 @@ func _build_world() -> void:
 	range_camera = Camera3D.new()
 	range_camera.name = "RangeCamera"
 	range_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	range_camera.size = 190.0
-	range_camera.position = Vector3(58.0, 82.0, 26.0)
-	range_camera.look_at(Vector3(0.0, 0.0, -40.0), Vector3.UP)
+	range_camera.size = 78.0
+	range_camera.position = Vector3(48.0, 64.0, 38.0)
+	range_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.UP)
 	range_camera.current = true
 	add_child(range_camera)
+	range_camera.make_current()
 
 	var sunlight := DirectionalLight3D.new()
 	sunlight.rotation_degrees = Vector3(-52.0, -24.0, 0.0)
@@ -123,7 +124,7 @@ func _add_distance_markers() -> void:
 	for marker_index in range(1, RANGE_MARKER_COUNT + 1):
 		var distance := RANGE_MARKER_SPACING * marker_index
 		var z_position := -distance
-		_add_box("Marker %d" % marker_index, Vector3(28.0, 0.045, 0.28), Vector3(0.0, 0.015, z_position), Color(0.40, 0.64, 0.66))
+		_add_box("Marker %d" % marker_index, Vector3(28.0, 0.045, 0.28), Vector3(0.0, 0.015, z_position), Color(0.56, 0.78, 0.74))
 		var label := Label3D.new()
 		label.text = "%d m" % int(distance)
 		label.position = Vector3(16.0, 0.08, z_position - 8.0)
@@ -164,6 +165,7 @@ func _add_cylinder(node_name: String, radius: float, height: float, location: Ve
 
 func _make_material(color: Color, roughness: float = 0.6) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
 	material.roughness = roughness
 	return material
