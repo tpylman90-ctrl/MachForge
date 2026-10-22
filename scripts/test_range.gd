@@ -111,7 +111,7 @@ func _draw_cannon(x: float, barrel_y: float, deck_y: float) -> void:
 
 	# Reinforced barrel bands and clean silhouette accents.
 	for band_x in [x + 3.0, x + 72.0]:
-		var t := (band_x - breech.x) / (muzzle.x - breech.x)
+		var t: float = (band_x - breech.x) / (muzzle.x - breech.x)
 		var band_center := breech.lerp(muzzle, t)
 		var band_offset := Vector2(-0.55, 1.0)
 		draw_line(band_center + band_offset * 11.0, band_center - band_offset * 11.0, Color(0.27, 0.39, 0.42), 4.0, true)
