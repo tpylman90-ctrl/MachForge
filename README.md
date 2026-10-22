@@ -12,4 +12,4 @@ This debug APK is for device testing. It is not a Play Store release build.
 
 ## Open the project
 
-Open `project.godot` in Godot 4.7.2. Build the cannon source and Godot export with `blender --background --python tools/build_range_cannon.py` before importing the project. Editable Blender source goes in `assets/blender_source/`; game exports go in `assets/godot_models/`.
+Open `project.godot` in Godot 4.7.2. Build the cannon source, Godot export, and Blender render preview with `blender --background --python tools/build_range_cannon.py` before importing the project. Editable Blender source goes in `assets/blender_source/`; game exports go in `assets/godot_models/`; previews go in `assets/previews/`.

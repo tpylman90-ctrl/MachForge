@@ -8,11 +8,13 @@ uses low-cost geometry and materials for Godot's mobile compatibility renderer.
 from pathlib import Path
 import bpy
 import math
+from mathutils import Vector
 
 
 ROOT = Path(__file__).resolve().parents[1]
 BLEND_OUT = ROOT / "assets" / "blender_source" / "machforge_range_cannon.blend"
 GLB_OUT = ROOT / "assets" / "godot_models" / "machforge_range_cannon.glb"
+PREVIEW_OUT = ROOT / "assets" / "previews" / "machforge_range_cannon.png"
 
 
 def material(name, color, metallic=0.0, roughness=0.55):
@@ -33,6 +35,7 @@ GOLD = material("Warning amber", (0.95, 0.48, 0.07), 0.25, 0.38)
 BLACK = material("Bore and rubber", (0.018, 0.027, 0.031), 0.12, 0.8)
 DECK = material("Deck composite", (0.16, 0.21, 0.23), 0.25, 0.65)
 LIGHT = material("Indicator lens", (0.1, 0.95, 0.77), 0.15, 0.22)
+STAGE = material("Preview studio floor", (0.035, 0.075, 0.085), 0.18, 0.72)
 
 
 def assign(obj, mat):
@@ -185,13 +188,69 @@ def build():
         box("Rear hazard stripe", (x, 8.85, 1.06), (0.47, 0.11, 0.06), GOLD if index % 2 == 0 else BLACK, 0.01)
 
 
+def build_preview_studio():
+    scene = bpy.context.scene
+    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.resolution_x = 1440
+    scene.render.resolution_y = 900
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGB"
+    scene.render.film_transparent = False
+    scene.render.filepath = str(PREVIEW_OUT)
+    scene.view_settings.view_transform = "AgX"
+    scene.world.use_nodes = True
+    world_background = scene.world.node_tree.nodes.get("Background")
+    world_background.inputs["Color"].default_value = (0.025, 0.045, 0.055, 1.0)
+    world_background.inputs["Strength"].default_value = 0.42
+
+    bpy.ops.mesh.primitive_plane_add(size=200.0, location=(0.0, 0.0, -0.12))
+    floor = bpy.context.object
+    floor.name = "Preview studio floor"
+    assign(floor, STAGE)
+
+    bpy.ops.object.camera_add(location=(26.0, -28.0, 18.0))
+    camera = bpy.context.object
+    camera.name = "Cannon presentation camera"
+    camera.data.type = "ORTHO"
+    camera.data.ortho_scale = 32.0
+    target = Vector((0.0, 0.0, 3.1))
+    camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
+    scene.camera = camera
+
+    for name, location, energy, size, color in (
+        ("Warm key", (8.0, -10.0, 19.0), 4200.0, 13.0, (1.0, 0.78, 0.55)),
+        ("Cool fill", (-15.0, -3.0, 10.0), 3000.0, 16.0, (0.43, 0.76, 0.92)),
+        ("Teal rim", (0.0, 13.0, 15.0), 4600.0, 11.0, (0.36, 1.0, 0.86)),
+    ):
+        bpy.ops.object.light_add(type="AREA", location=location)
+        light = bpy.context.object
+        light.name = name
+        light.data.energy = energy
+        light.data.shape = "DISK"
+        light.data.size = size
+        light.data.color = color
+        light.rotation_euler = (target - light.location).to_track_quat("-Z", "Y").to_euler()
+
+    scene.render.image_settings.color_mode = "RGB"
+
+
 def main():
     BLEND_OUT.parent.mkdir(parents=True, exist_ok=True)
     GLB_OUT.parent.mkdir(parents=True, exist_ok=True)
+    PREVIEW_OUT.parent.mkdir(parents=True, exist_ok=True)
     build()
+    asset_objects = list(bpy.context.scene.objects)
+    build_preview_studio()
+    bpy.ops.render.render(write_still=True)
     bpy.ops.object.select_all(action="SELECT")
+    for obj in bpy.context.selected_objects:
+        obj.select_set(False)
+    for obj in asset_objects:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = next((obj for obj in asset_objects if obj.name == "Armored firing deck"), asset_objects[0])
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_OUT))
-    bpy.ops.export_scene.gltf(filepath=str(GLB_OUT), export_format="GLB", export_apply=True)
+    bpy.ops.export_scene.gltf(filepath=str(GLB_OUT), export_format="GLB", export_apply=True, use_selection=True)
     print(f"Saved Blender source: {BLEND_OUT}")
     print(f"Exported Godot model: {GLB_OUT}")
 

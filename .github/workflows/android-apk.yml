@@ -161,5 +161,6 @@ jobs:
           path: |
             assets/blender_source/machforge_range_cannon.blend
             assets/godot_models/machforge_range_cannon.glb
+            assets/previews/machforge_range_cannon.png
           if-no-files-found: warn
           retention-days: 30
