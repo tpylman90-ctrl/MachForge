@@ -81,9 +81,10 @@ func _build_world() -> void:
 	range_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	range_camera.size = 78.0
 	range_camera.position = Vector3(48.0, 64.0, 38.0)
-	range_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.UP)
-	range_camera.current = true
 	add_child(range_camera)
+	# Node3D.look_at() needs the camera inside the scene tree so its global
+	# transform is valid. Calling it before add_child() leaves the default view.
+	range_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.UP)
 	range_camera.make_current()
 
 	var sunlight := DirectionalLight3D.new()
