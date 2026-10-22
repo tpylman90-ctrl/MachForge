@@ -143,12 +143,12 @@ func _add_cannon() -> void:
 
 func _muzzle_position() -> Vector3:
 	var muzzle_offset := Vector3(0.0, 0.0, -6.47).rotated(Vector3.RIGHT, deg_to_rad(launch_angle))
-	return Vector3(0.0, 4.15, 0.0) + muzzle_offset
+	return Vector3(0.0, 3.6, 0.0) + muzzle_offset
 
 
 func _update_cannon_aim() -> void:
 	if is_instance_valid(cannon_barrel_pivot):
-		cannon_barrel_pivot.rotation.x = deg_to_rad(launch_angle)
+		cannon_barrel_pivot.rotation.x = deg_to_rad(-launch_angle)
 	if is_instance_valid(projectile_preview):
 		projectile_preview.position = _muzzle_position()
 
@@ -170,9 +170,9 @@ func _apply_compatibility_materials(root: Node) -> void:
 func _add_cannon_fallback() -> void:
 	_add_box("Armored firing deck", Vector3(17.0, 0.75, 19.0), Vector3(0.0, 0.56, 0.0), Color(0.16, 0.21, 0.23))
 	_add_box("Cradle crossbeam", Vector3(6.8, 0.65, 3.1), Vector3(0.0, 2.28, -0.5), Color(0.10, 0.16, 0.19))
-	_add_cylinder("Pressure barrel", 1.04, 10.4, Vector3(0.0, 4.15, -1.2), Color(0.38, 0.48, 0.50), PI * 0.5)
-	_add_cylinder("Muzzle crown", 1.2, 0.3, Vector3(0.0, 4.15, -6.47), Color(0.03, 0.69, 0.63), PI * 0.5)
-	_add_cylinder("Breech block", 1.38, 2.1, Vector3(0.0, 4.15, 4.05), Color(0.10, 0.16, 0.19), PI * 0.5)
+	_add_cylinder("Pressure barrel", 1.04, 10.4, Vector3(0.0, 3.6, -1.2), Color(0.38, 0.48, 0.50), PI * 0.5)
+	_add_cylinder("Muzzle crown", 1.2, 0.3, Vector3(0.0, 3.6, -6.47), Color(0.03, 0.69, 0.63), PI * 0.5)
+	_add_cylinder("Breech block", 1.38, 2.1, Vector3(0.0, 3.6, 4.05), Color(0.10, 0.16, 0.19), PI * 0.5)
 
 
 func _add_range_course() -> void:

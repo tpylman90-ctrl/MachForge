@@ -243,6 +243,14 @@ def main():
     PREVIEW_OUT.parent.mkdir(parents=True, exist_ok=True)
     build()
     asset_objects = list(bpy.context.scene.objects)
+    orientation_root = bpy.data.objects.new("RangeOrientation", None)
+    bpy.context.scene.collection.objects.link(orientation_root)
+    for obj in asset_objects:
+        world_matrix = obj.matrix_world.copy()
+        obj.parent = orientation_root
+        obj.matrix_world = world_matrix
+    orientation_root.rotation_euler[2] = math.pi
+    asset_objects.append(orientation_root)
     build_preview_studio()
     bpy.ops.render.render(write_still=True)
     bpy.ops.object.select_all(action="SELECT")
