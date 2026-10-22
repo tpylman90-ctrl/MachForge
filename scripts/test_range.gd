@@ -1,6 +1,7 @@
 extends Node3D
 
 const FlightSolver = preload("res://scripts/flight_solver.gd")
+const CannonScene = preload("res://assets/godot_models/machforge_range_cannon.glb")
 const RANGE_MARKER_SPACING := 250.0
 const RANGE_MARKER_COUNT := 16
 const PANEL_DARK := Color(0.035, 0.055, 0.075, 0.94)
@@ -120,17 +121,13 @@ func _build_world() -> void:
 
 
 func _add_cannon() -> void:
-	var cannon_scene := load("res://assets/godot_models/machforge_range_cannon.glb") as PackedScene
-	if cannon_scene != null:
-		var cannon := cannon_scene.instantiate()
-		cannon.name = "BlenderRangeCannon"
-		cannon.position = Vector3(0.0, 0.0, 0.0)
-		add_child(cannon)
-		_apply_compatibility_materials(cannon)
-		cannon_barrel_pivot = cannon.find_child("ElevatingTube", true, false) as Node3D
-		_update_cannon_aim()
-	else:
-		_add_cannon_fallback()
+	var cannon := CannonScene.instantiate()
+	cannon.name = "BlenderRangeCannon"
+	cannon.position = Vector3(0.0, 0.0, 0.0)
+	add_child(cannon)
+	_apply_compatibility_materials(cannon)
+	cannon_barrel_pivot = cannon.find_child("ElevatingTube", true, false) as Node3D
+	_update_cannon_aim()
 
 
 func _muzzle_position() -> Vector3:
