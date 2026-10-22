@@ -125,38 +125,38 @@ def build():
     # Long smoothbore tube and concentric muzzle insert. These pieces share a
     # movable pivot so the visible cannon follows the launch-angle control.
     barrel_parts = []
-    barrel_parts.append(cylinder_y("Pressure tube", (0, -1.2, 4.15), 0.91, 10.4, STEEL))
-    barrel_parts.append(cylinder_y("Outer barrel jacket", (0, -1.15, 4.15), 1.04, 8.3, EDGE))
-    barrel_parts.append(cylinder_y("Recessed black bore", (0, -6.43, 4.15), 0.77, 0.025, BLACK))
-    barrel_parts.append(torus_y("Muzzle crown", (0, -6.47, 4.15), 0.91, 0.14, ACCENT))
-    barrel_parts.append(torus_y("Muzzle reinforcement", (0, -6.0, 4.15), 1.02, 0.13, EDGE))
+    barrel_parts.append(cylinder_y("Pressure tube", (0, -1.2, 3.6), 0.91, 10.4, STEEL))
+    barrel_parts.append(cylinder_y("Outer barrel jacket", (0, -1.15, 3.6), 1.04, 8.3, EDGE))
+    barrel_parts.append(cylinder_y("Recessed black bore", (0, -6.43, 3.6), 0.77, 0.025, BLACK))
+    barrel_parts.append(torus_y("Muzzle crown", (0, -6.47, 3.6), 0.91, 0.14, ACCENT))
+    barrel_parts.append(torus_y("Muzzle reinforcement", (0, -6.0, 3.6), 1.02, 0.13, EDGE))
     for y in (-4.6, -2.4, -0.2, 1.6):
-        barrel_parts.append(torus_y("Barrel reinforcement band", (0, y, 4.15), 1.04, 0.105, STEEL))
+        barrel_parts.append(torus_y("Barrel reinforcement band", (0, y, 3.6), 1.04, 0.105, STEEL))
 
     # The rear pressure chamber and breech read as a heavy, engineered machine.
-    barrel_parts.append(cylinder_y("Breech block", (0, 4.05, 4.15), 1.38, 2.1, STEEL))
-    barrel_parts.append(torus_y("Breech seal ring", (0, 3.05, 4.15), 1.34, 0.14, GOLD))
-    barrel_parts.append(cylinder_y("Accumulator chamber", (0, 6.3, 4.15), 1.04, 2.2, EDGE))
-    barrel_parts.append(cylinder_y("Accumulator end cap", (0, 7.48, 4.15), 1.17, 0.34, STEEL))
-    barrel_parts.append(torus_y("Accumulator seam", (0, 5.2, 4.15), 1.08, 0.08, ACCENT))
+    barrel_parts.append(cylinder_y("Breech block", (0, 4.05, 3.6), 1.38, 2.1, STEEL))
+    barrel_parts.append(torus_y("Breech seal ring", (0, 3.05, 3.6), 1.34, 0.14, GOLD))
+    barrel_parts.append(cylinder_y("Accumulator chamber", (0, 6.3, 3.6), 1.04, 2.2, EDGE))
+    barrel_parts.append(cylinder_y("Accumulator end cap", (0, 7.48, 3.6), 1.17, 0.34, STEEL))
+    barrel_parts.append(torus_y("Accumulator seam", (0, 5.2, 3.6), 1.08, 0.08, ACCENT))
     for x in (-0.57, 0.57):
         barrel_parts.append(cylinder_y("Pressure manifold", (x, 6.22, 5.34), 0.2, 2.0, STEEL, 24))
         barrel_parts.append(cylinder_y("Manifold end fitting", (x, 7.25, 5.34), 0.28, 0.18, GOLD, 24))
 
     barrel_pivot = bpy.data.objects.new("ElevatingTube", None)
     bpy.context.scene.collection.objects.link(barrel_pivot)
-    barrel_pivot.location = (0.0, 0.0, 4.15)
+    barrel_pivot.location = (0.0, 0.0, 3.6)
     for part in barrel_parts:
         world_matrix = part.matrix_world.copy()
         part.parent = barrel_pivot
         part.matrix_world = world_matrix
 
     # Cradle, trunnions and visible elevation actuators.
-    box("Cradle crossbeam", (0, 0.5, 2.28), (6.8, 3.1, 0.65), STEEL, 0.16)
+    box("Cradle crossbeam", (0, 0.5, 1.95), (6.8, 3.1, 0.65), STEEL, 0.16)
     for side in (-1, 1):
-        cylinder_x("Barrel trunnion", (side * 1.8, 0.5, 3.86), 0.53, 0.95, EDGE)
-        box("Trunnion fork", (side * 2.45, 0.15, 3.47), (0.44, 2.2, 2.0), STEEL, 0.17)
-        box("Fork safety stripe", (side * 2.69, 0.12, 3.45), (0.025, 1.05, 0.12), GOLD, 0.005)
+        cylinder_x("Barrel trunnion", (side * 1.65, 0.5, 3.6), 0.53, 1.4, EDGE)
+        box("Trunnion fork", (side * 1.75, 0.15, 3.0), (0.44, 2.2, 2.0), STEEL, 0.17)
+        box("Fork safety stripe", (side * 2.0, 0.12, 3.0), (0.025, 1.05, 0.12), GOLD, 0.005)
         # Hydraulic rams angle back from the cradle to the deck.
         ram = cylinder_x("Elevation actuator", (side * 3.08, 2.0, 2.52), 0.18, 2.25, EDGE, 24)
         ram.rotation_euler[1] = math.radians(23.0)
