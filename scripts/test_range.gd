@@ -70,23 +70,11 @@ func _process(delta: float) -> void:
 func _build_world() -> void:
 	var environment_node := WorldEnvironment.new()
 	var environment := Environment.new()
-	environment.background_mode = Environment.BG_SKY
-	var sky := Sky.new()
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.16, 0.34, 0.48)
-	sky_material.sky_horizon_color = Color(0.77, 0.75, 0.64)
-	sky_material.ground_bottom_color = Color(0.23, 0.27, 0.24)
-	sky_material.ground_horizon_color = Color(0.55, 0.61, 0.56)
-	sky_material.sun_angle_max = 14.0
-	sky.sky_material = sky_material
-	environment.sky = sky
+	environment.background_mode = Environment.BG_COLOR
+	environment.background_color = Color(0.34, 0.52, 0.59)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.63, 0.75, 0.79)
 	environment.ambient_light_energy = 0.72
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.57, 0.71, 0.74)
-	environment.fog_density = 0.00035
 	environment_node.environment = environment
 	add_child(environment_node)
 
@@ -102,7 +90,7 @@ func _build_world() -> void:
 	var sunlight := DirectionalLight3D.new()
 	sunlight.rotation_degrees = Vector3(-38.0, -32.0, 0.0)
 	sunlight.light_energy = 1.15
-	sunlight.shadow_enabled = true
+	sunlight.shadow_enabled = false
 	add_child(sunlight)
 
 	_add_box("Dry range terrain", Vector3(900.0, 1.2, 4700.0), Vector3(0.0, -0.85, -2050.0), Color(0.36, 0.38, 0.32))
@@ -138,6 +126,7 @@ func _add_cannon() -> void:
 		cannon.name = "BlenderRangeCannon"
 		cannon.position = Vector3(0.0, 0.0, 0.0)
 		add_child(cannon)
+		_apply_compatibility_materials(cannon)
 		cannon_barrel_pivot = cannon.find_child("ElevatingTube", true, false) as Node3D
 		_update_cannon_aim()
 	else:
@@ -154,6 +143,20 @@ func _update_cannon_aim() -> void:
 		cannon_barrel_pivot.rotation.x = deg_to_rad(launch_angle)
 	if is_instance_valid(projectile_preview):
 		projectile_preview.position = _muzzle_position()
+
+
+func _apply_compatibility_materials(root: Node) -> void:
+	if root is MeshInstance3D:
+		var mesh_instance := root as MeshInstance3D
+		if mesh_instance.mesh != null:
+			for surface_index in range(mesh_instance.mesh.get_surface_count()):
+				var source_material := mesh_instance.mesh.surface_get_material(surface_index) as StandardMaterial3D
+				var surface_color := Color(0.34, 0.42, 0.43)
+				if source_material != null:
+					surface_color = source_material.albedo_color
+				mesh_instance.set_surface_override_material(surface_index, _make_material(surface_color, 0.7))
+	for child in root.get_children():
+		_apply_compatibility_materials(child)
 
 
 func _add_cannon_fallback() -> void:
@@ -262,8 +265,8 @@ func _add_cylinder(node_name: String, radius: float, height: float, location: Ve
 
 func _make_material(color: Color, roughness: float = 0.6) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
-	material.metallic = clampf((0.8 - roughness) * 0.28, 0.0, 0.42)
 	material.roughness = roughness
 	return material
 
