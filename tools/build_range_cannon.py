@@ -8,7 +8,7 @@ uses low-cost geometry and materials for Godot's mobile compatibility renderer.
 from pathlib import Path
 import bpy
 import math
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -243,14 +243,13 @@ def main():
     PREVIEW_OUT.parent.mkdir(parents=True, exist_ok=True)
     build()
     asset_objects = list(bpy.context.scene.objects)
-    orientation_root = bpy.data.objects.new("RangeOrientation", None)
-    bpy.context.scene.collection.objects.link(orientation_root)
+    # Bake the Blender-to-Godot forward-axis correction into the actual top-level
+    # asset transforms. The runtime GLTF importer can omit an empty scene root's
+    # rotation, so the direction must live on the cannon and range objects.
+    direction_correction = Matrix.Rotation(math.pi, 4, "Z")
     for obj in asset_objects:
-        world_matrix = obj.matrix_world.copy()
-        obj.parent = orientation_root
-        obj.matrix_world = world_matrix
-    orientation_root.rotation_euler[2] = math.pi
-    asset_objects.append(orientation_root)
+        if obj.parent is None or obj.parent not in asset_objects:
+            obj.matrix_world = direction_correction @ obj.matrix_world
     build_preview_studio()
     bpy.ops.render.render(write_still=True)
     bpy.ops.object.select_all(action="SELECT")
